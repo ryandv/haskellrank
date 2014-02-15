@@ -1,38 +1,36 @@
-import Data.List
+import Data.List as L
+import Data.Text as T
 
--- Functional if statement from
--- http://www.haskell.org/haskellwiki/If-then-else
-if'                     :: Bool -> a -> a -> a
-if' True x _            = x
-if' False _ y           = y
+import Control.Monad.RWS
 
--- Reads in a space-delimited string of numbers as a list of integers.
-intsFromStr             :: String -> [Int]
-intsFromStr             = map read . words
+-- First tuple element contains visited numbers in the array.
+-- Second tuple element contains unvisited numbers.
+arrayInsert                    :: Int -> RWST () [Text] ([Int], [Int]) IO ()
+arrayInsert x                  = modify newState where
+  newState (visited, [])       = ((L.take ((L.length visited) - 1) visited) ++ [x], [])
+  newState ([], (y:ys))        = ([x,y], ys)
+  newState (visited, (y:ys))   = (L.take ((L.length visited) - 1) visited ++ [x, y], ys)
 
--- Turns a list of integers into a space-delimited string of numbers.
-intsToStr               :: [Int] -> String
-intsToStr               = intercalate " " . map show
+-- Print out our steps.
+tellArray :: RWST () [Text] ([Int], [Int]) IO ()
+tellArray = do
+  arrState <- get
+  tell $ [T.reverse . T.pack $ (L.intersperse ' ' $ L.concatMap show (fst arrState ++ snd arrState) ++ "\n")]
 
--- Replaces the value at position "n" in a list. If n > length lst, 
--- will append val to lst.
-replace			:: Int -> Int -> [Int] -> [Int]
-replace n val lst	= (take n lst) ++ (val : (drop (n + 1) lst))
+showInsertionShift         :: [Int] -> RWST () [Text] ([Int], [Int]) IO ()
+showInsertionShift []      = tell []
+showInsertionShift (x:xs)  = showInsertionShift' x xs where
 
--- Implements one step of insertion sort. Shifts an element further
--- down the list or places an unsorted element in its place.
---
--- Builds up a list of lists, one per step of the sort.
-insertionStep				:: Int -> Int -> (Int -> Int -> Bool) -> [Int] -> [[Int]]
-insertionStep (-1) unsorted _ lst	= [(unsorted : (drop 1 lst))]
-insertionStep n unsorted ord lst
-	| (lst !! n) `ord` unsorted	= [newList unsorted]
-	| otherwise			= (newList $ lst !! n)
-						: (insertionStep (n - 1) unsorted ord . newList $ lst !! n)
-   	where newList newval	= replace (n + 1) newval lst
+  showInsertionShift'          :: Int -> [Int] -> RWST () [Text] ([Int], [Int]) IO ()
+  showInsertionShift' x []     = arrayInsert x >> tellArray
+  showInsertionShift' x (y:ys) | x >= y = arrayInsert x >> tellArray
+                               | otherwise = arrayInsert y >> tellArray >> showInsertionShift' x ys where
 
-main			:: IO ()
-main			= do
-				len	<- fmap read getLine
-				lst	<- fmap intsFromStr getLine
-				putStr . unlines . map intsToStr . insertionStep (len - 2) (last lst) (<=) $ take (len - 1) lst
+main :: IO ()
+main = do
+  elements <- getLine
+
+  let array = L.reverse . L.map read . L.words $ elements
+
+  sortresult <- execRWST (showInsertionShift array) () ([], L.tail array)
+  mapM_ (putStrLn . T.unpack . T.strip) $ snd sortresult
