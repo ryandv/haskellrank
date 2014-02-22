@@ -15,7 +15,7 @@ arrayInsert x                  = modify newState where
 tellArray :: RWST () [Text] ([Int], [Int]) IO ()
 tellArray = do
   arrState <- get
-  tell $ [T.reverse . T.pack $ (L.intersperse ' ' $ L.concatMap show (fst arrState ++ snd arrState) ++ "\n")]
+  tell $ [T.pack $ (L.unwords . L.map show $ L.reverse (fst arrState ++ snd arrState)) ++ "\n"]
 
 showInsertionShift         :: [Int] -> RWST () [Text] ([Int], [Int]) IO ()
 showInsertionShift []      = tell []
@@ -28,6 +28,7 @@ showInsertionShift (x:xs)  = showInsertionShift' x xs where
 
 main :: IO ()
 main = do
+  arrLen   <- getLine
   elements <- getLine
 
   let array = L.reverse . L.map read . L.words $ elements
