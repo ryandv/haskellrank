@@ -11,7 +11,7 @@ insertionSort             :: [Int] -> Writer String [Int]
 insertionSort (x:xs)      = insertionSort' xs [x] where
 
   insertionSort'              :: [Int] -> [Int] -> Writer String [Int]
-  insertionSort' [] acc       = tell "" >> return acc
+  insertionSort' [] acc       = return acc
   insertionSort' (x:xs) acc   = tellArray (insertionShift x acc ++ xs) >> insertionSort' xs (insertionShift x acc)
 
   insertionShift            :: Int -> [Int] -> [Int]
